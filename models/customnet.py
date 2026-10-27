@@ -3,7 +3,7 @@ from torch import nn
 
 # Define the custom neural network
 class CustomNet(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=200):
         super(CustomNet, self).__init__()
         # Define layers of the neural network
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1, stride=1)
@@ -14,7 +14,7 @@ class CustomNet(nn.Module):
         self.bn3 = nn.BatchNorm2d(256)
         self.pool = nn.MaxPool2d(2)
         self.gap = nn.AdaptiveAvgPool2d(1)
-        self.fc1 = nn.Linear(256, 200) # 200 is the number of classes in TinyImageNet
+        self.fc1 = nn.Linear(256, num_classes) # 200 is the number of classes in TinyImageNet
 
     def forward(self, x):
         # B x 3 x 224 x 224
