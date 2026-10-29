@@ -1,7 +1,9 @@
+import os
 import torch
 import torch.nn as nn
 from models.customnet import CustomNet
 from dataset.dataloader import get_dataloaders
+from utils.visualization import get_class_names, show_predictions
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -36,6 +38,12 @@ def main():
     print(f"\n--- RISULTATI VALUTAZIONE FINALE ---")
     print(f"Loss: {final_loss:.4f}")
     print(f"Accuracy: {final_acc * 100:.2f}%")
+
+    # Salva una griglia con alcune predizioni del modello
+    os.makedirs("outputs", exist_ok=True)
+    class_names = get_class_names(val_loader.dataset.classes)
+    show_predictions(model, val_loader, class_names, device, save_path="outputs/eval_predictions.png")
+    print("Predizioni salvate in outputs/eval_predictions.png")
 
 if __name__ == "__main__":
     main()

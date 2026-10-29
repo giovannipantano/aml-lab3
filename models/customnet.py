@@ -17,10 +17,10 @@ class CustomNet(nn.Module):
         self.fc1 = nn.Linear(256, num_classes) # 200 is the number of classes in TinyImageNet
 
     def forward(self, x):
-        # B x 3 x 224 x 224
-        x = self.pool(self.bn1(self.conv1(x)).relu())  # B x 64 x 112 x 112
-        x = self.pool(self.bn2(self.conv2(x)).relu())  # B x 128 x 56 x 56
-        x = self.pool(self.bn3(self.conv3(x)).relu())  # B x 256 x 28 x 28
+        # B x 3 x 64 x 64
+        x = self.pool(self.bn1(self.conv1(x)).relu())  # B x 64 x 32 x 32
+        x = self.pool(self.bn2(self.conv2(x)).relu())  # B x 128 x 16 x 16
+        x = self.pool(self.bn3(self.conv3(x)).relu())  # B x 256 x 8 x 8
         x = self.gap(x)                                # B x 256 x 1 x 1
         x = x.flatten(1)                               # B x 256
         x = self.fc1(x)                                # B x 200

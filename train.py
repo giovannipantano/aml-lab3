@@ -1,4 +1,5 @@
 import os
+import argparse
 import torch
 import torch.nn as nn
 from tqdm import tqdm
@@ -6,6 +7,7 @@ import wandb
 
 from models.customnet import CustomNet
 from dataset.dataloader import get_dataloaders
+from utils.visualization import get_class_names, show_batch, show_predictions, plot_history
 
 def train_epoch(model, loader, criterion, optimizer, device):
     model.train()
@@ -42,14 +44,25 @@ def evaluate(model, loader, criterion, device):
 
     return running_loss / total, correct / total
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_dir", default="data/tiny-imagenet-200")
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--num_workers", type=int, default=2)
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
+
     # Inizializzazione WandB
     run = wandb.init(
         project="aml-lab3",
         config={
-            "learning_rate": 0.001,
-            "epochs": 10,
-            "batch_size": 64,
+            "learning_rate": args.lr,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
             "architecture": "CustomNet",
             "dataset": "TinyImageNet"
         }
@@ -61,9 +74,16 @@ def main():
 
     # DataLoaders
     train_loader, val_loader = get_dataloaders(
-        data_dir="data/tiny-imagenet-200", 
-        batch_size=config.batch_size
+        data_dir=args.data_dir,
+        batch_size=config.batch_size,
+        num_workers=args.num_workers
     )
+    class_names = get_class_names(train_loader.dataset.classes, args.data_dir)
+
+    # Visualizzazione di alcuni esempi del dataset
+    os.makedirs("outputs", exist_ok=True)
+    fig = show_batch(train_loader, class_names, save_path="outputs/samples.png")
+    wandb.log({"samples": wandb.Image(fig)})
 
     # Modello, Loss, Ottimizzatore
     model = CustomNet(num_classes=200).to(device)
@@ -72,12 +92,18 @@ def main():
 
     os.makedirs("checkpoints", exist_ok=True)
     best_acc = 0.0
+    history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
 
     for epoch in range(config.epochs):
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = evaluate(model, val_loader, criterion, device)
 
         print(f"Epoch [{epoch+1}/{config.epochs}] | Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}")
+
+        history["train_loss"].append(train_loss)
+        history["train_acc"].append(train_acc)
+        history["val_loss"].append(val_loss)
+        history["val_acc"].append(val_acc)
 
         # Logging metriche su WandB
         wandb.log({
@@ -92,6 +118,12 @@ def main():
         if val_acc > best_acc:
             best_acc = val_acc
             torch.save(model.state_dict(), "checkpoints/best_model.pth")
+
+    # Curve di training e predizioni del modello finale
+    fig = plot_history(history, save_path="outputs/training_curves.png")
+    wandb.log({"training_curves": wandb.Image(fig)})
+    fig = show_predictions(model, val_loader, class_names, device, save_path="outputs/predictions.png")
+    wandb.log({"predictions": wandb.Image(fig)})
 
     wandb.finish()
 
